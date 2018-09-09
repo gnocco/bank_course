@@ -251,4 +251,3 @@ varImpPlot(rfModel_new, sort=T, n.var = 10, main = 'Top 10 Feature Importance')
 # Exercise;
 
 data(BANK)
-
