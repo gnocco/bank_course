@@ -8,8 +8,9 @@ install.packages('ggthemes')
 install.packages('caret')
 install.packages('MASS')
 install.packages('randomForest')
-install.packages('party')
 install.packages('e1071')
+install.packages('party')
+install.packages('gpk')
 
 library(plyr)
 library(corrplot)
@@ -21,6 +22,7 @@ library(MASS)
 library(randomForest)
 library(e1071)
 library(party)
+library(gpk)
 
 churn <- read.csv('Telco-Customer-Churn.csv')
 str(churn)
@@ -245,3 +247,8 @@ varImpPlot(rfModel_new, sort=T, n.var = 10, main = 'Top 10 Feature Importance')
 
 
 # Features such as tenure_group, Contract, PaperlessBilling, MonthlyCharges and InternetService appear to play a role in customer churn.
+
+# Exercise;
+
+data(BANK)
+
