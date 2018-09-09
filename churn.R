@@ -1,5 +1,16 @@
 # Predict Customer Churn with R
 
+install.packages('plyr')
+install.packages('corrplot')
+install.packages('ggplot2')
+install.packages('gridExtra')
+install.packages('ggthemes')
+install.packages('caret')
+install.packages('MASS')
+install.packages('randomForest')
+install.packages('party')
+install.packages('e1071')
+
 library(plyr)
 library(corrplot)
 library(ggplot2)
@@ -8,7 +19,7 @@ library(ggthemes)
 library(caret)
 library(MASS)
 library(randomForest)
-
+library(e1071)
 library(party)
 
 churn <- read.csv('Telco-Customer-Churn.csv')
@@ -110,9 +121,6 @@ grid.arrange(p1, p2, p3, p4, ncol=2)
 
 p5 <- ggplot(churn, aes(x=PhoneService)) + ggtitle("Phone Service") + xlab("Phone Service") +
   geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
-
-
-
 p6 <- ggplot(churn, aes(x=MultipleLines)) + ggtitle("Multiple Lines") + xlab("Multiple Lines") + 
   geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
 p7 <- ggplot(churn, aes(x=InternetService)) + ggtitle("Internet Service") + xlab("Internet Service") + 
@@ -162,6 +170,8 @@ dim(training); dim(testing)
 LogModel <- glm(Churn ~ .,family=binomial(link="logit"),data=training)
 print(summary(LogModel))
 
+anova(LogModel, test="Chisq")
+
 # Check Accurancy GLM
 testing$Churn <- as.character(testing$Churn)
 testing$Churn[testing$Churn=="No"] <- "0"
@@ -171,11 +181,15 @@ fitted.results <- ifelse(fitted.results > 0.5,1,0)
 misClasificError <- mean(fitted.results != testing$Churn)
 print(paste('Logistic Regression Accuracy',1-misClasificError))
 
-library(MASS)
-# Coefficients
+# Confusion Matrix
+print("Confusion Matrix for Logistic Regression"); table(testing$Churn, fitted.results > 0.5)
+
+# Odds ratio
 exp(cbind(OR=coef(LogModel), confint(LogModel)))
 
-# Fitting the Decision Tree
+
+
+# Decision Tree
 tree <- ctree(Churn~Contract+tenure_group+PaperlessBilling, training)
 plot(tree)
 
@@ -184,9 +198,50 @@ pred_tree <- predict(tree, testing)
 print("Confusion Matrix for Decision Tree"); 
 table(Predicted = pred_tree, Actual = testing$Churn)
 
-#Check Accurancy Decision Tree
+# Check Accurancy Decision Tree
 p1 <- predict(tree, training)
 tab1 <- table(Predicted = p1, Actual = training$Churn)
 tab2 <- table(Predicted = pred_tree, Actual = testing$Churn)
 print(paste('Decision Tree Accuracy',sum(diag(tab2))/sum(tab2)))
 
+
+# Random Forest
+rfModel <- randomForest(Churn ~., data = training)
+print(rfModel)
+
+# Confusion Matrix
+pred_rf <- predict(rfModel, testing)
+table(Predicted = pred_rf, Actual = testing$Churn)
+
+# Accuracy
+p1 <- predict(rfModel, training)
+tab1 <- table(Predicted = p1, Actual = training$Churn)
+tab2 <- table(Predicted = pred_rf, Actual = testing$Churn)
+print(paste('Random Forest Accuracy',sum(diag(tab2))/sum(tab2)))
+
+# Error Rate
+plot(rfModel)
+
+# Tune
+t <- tuneRF(training[, -18], training[, 18], stepFactor = 0.5, plot = TRUE, ntreeTry = 100, trace = TRUE, improve = 0.05)
+
+# Retrain
+rfModel_new <- randomForest(Churn ~., data = training, ntree = 100, mtry = 2, importance = TRUE, proximity = TRUE)
+print(rfModel_new)
+
+# Confusion Matrix
+pred_rf_new <- predict(rfModel_new, testing)
+table(Predicted = pred_rf_new, Actual = testing$Churn)
+
+# Accuracy
+p1 <- predict(rfModel_new, training)
+tab1 <- table(Predicted = p1, Actual = training$Churn)
+tab2 <- table(Predicted = pred_rf_new, Actual = testing$Churn)
+print(paste('New Random Forest Accuracy',sum(diag(tab2))/sum(tab2)))
+
+
+# Random Forest Feature Importance
+varImpPlot(rfModel_new, sort=T, n.var = 10, main = 'Top 10 Feature Importance')
+
+
+# Features such as tenure_group, Contract, PaperlessBilling, MonthlyCharges and InternetService appear to play a role in customer churn.
